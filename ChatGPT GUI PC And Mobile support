@@ -1,0 +1,201 @@
+-- Define the main variables
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+local flying = false
+local bodyVelocity
+local bodyGyro
+
+-- Create the main GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ChatGPTsGUI"
+screenGui.Parent = playerGui
+
+-- Create the main frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Create the title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "ChatGPTs GUI"
+titleLabel.TextScaled = true
+titleLabel.Parent = mainFrame
+
+-- Create the minimize button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0.1, 0, 0.1, 0)
+minimizeButton.Position = UDim2.new(0.8, 0, 0, 0)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Text = "-"
+minimizeButton.TextScaled = true
+minimizeButton.Parent = mainFrame
+
+-- Create the close button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0.1, 0, 0.1, 0)
+closeButton.Position = UDim2.new(0.9, 0, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "X"
+closeButton.TextScaled = true
+closeButton.Parent = mainFrame
+
+-- Function to start or stop flying
+local function toggleFly()
+    if not flying then
+        flying = true
+        if character and character.PrimaryPart then
+            -- Set up BodyVelocity for flying
+            bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.Name = "FlyBodyVelocity"
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+            bodyVelocity.Parent = character.PrimaryPart
+
+            -- Set up BodyGyro for flying
+            bodyGyro = Instance.new("BodyGyro")
+            bodyGyro.Name = "FlyBodyGyro"
+            bodyGyro.CFrame = character.PrimaryPart.CFrame
+            bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+            bodyGyro.P = 3000
+            bodyGyro.Parent = character.PrimaryPart
+
+            -- Control flying movement
+            local userInput = game:GetService("UserInputService")
+            local camera = workspace.CurrentCamera
+            userInput.InputChanged:Connect(function(input)
+                if flying then
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        local moveDirection = Vector3.new()
+                        if input.KeyCode == Enum.KeyCode.W then
+                            moveDirection = moveDirection + camera.CFrame.LookVector
+                        elseif input.KeyCode == Enum.KeyCode.S then
+                            moveDirection = moveDirection - camera.CFrame.LookVector
+                        elseif input.KeyCode == Enum.KeyCode.A then
+                            moveDirection = moveDirection - camera.CFrame.RightVector
+                        elseif input.KeyCode == Enum.KeyCode.D then
+                            moveDirection = moveDirection + camera.CFrame.RightVector
+                        end
+                        bodyVelocity.Velocity = moveDirection.Unit * 50
+                        bodyGyro.CFrame = camera.CFrame
+                    end
+                end
+            end)
+        end
+    else
+        flying = false
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+            bodyVelocity = nil
+        end
+        if bodyGyro then
+            bodyGyro:Destroy()
+            bodyGyro = nil
+        end
+    end
+end
+
+-- Create command buttons
+local commands = {
+    {name = "Fly", callback = toggleFly},
+    {name = "God Mode", callback = function()
+        if humanoid then
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = math.huge
+        end
+    end},
+    {name = "Speed Boost", callback = function()
+        if humanoid then
+            humanoid.WalkSpeed = 50 -- Change this to desired speed
+        end
+    end},
+    {name = "Teleport", callback = function()
+        if character and character.PrimaryPart then
+            character:SetPrimaryPartCFrame(CFrame.new(0, 50, 0)) -- Change this to desired position
+        end
+    end},
+    {name = "Invisibility", callback = function()
+        if character then
+            character.HumanoidRootPart.Transparency = 1
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                end
+            end
+        end
+    end}
+}
+
+local yPos = 0.3
+for _, cmd in pairs(commands) do
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.8, 0, 0.1, 0)
+    button.Position = UDim2.new(0.1, 0, yPos, 0)
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = cmd.name
+    button.TextScaled = true
+    button.Parent = mainFrame
+
+    button.MouseButton1Click:Connect(cmd.callback)
+    yPos = yPos + 0.12
+end
+
+-- Minimize button functionality
+local isMinimized = false
+minimizeButton.MouseButton1Click:Connect(function()
+    if not isMinimized then
+        mainFrame.Size = UDim2.new(0.1, 0, 0.1, 0)
+        mainFrame.Position = UDim2.new(0.9, 0, 0.9, 0)
+        minimizeButton.Text = "+"
+        isMinimized = true
+    else
+        mainFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
+        mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+        minimizeButton.Text = "-"
+        isMinimized = false
+    end
+end)
+
+-- Close button functionality
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+-- Draggable functionality
+local dragging
+local dragInput
+local startPos
+local startPosFrame
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        startPos = input.Position
+        startPosFrame = mainFrame.Position
+    end
+end)
+
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - startPos
+        mainFrame.Position = UDim2.new(startPosFrame.X.Scale, startPosFrame.X.Offset + delta.X, startPosFrame.Y.Scale, startPosFrame.Y.Offset + delta.Y)
+    end
+end)
